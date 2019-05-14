@@ -53,7 +53,7 @@ class SNLI():
 class Quora():
     def __init__(self, args):
         self.RAW = data.RawField(is_target=False)
-        self.TEXT = data.Field(batch_first=True)
+        self.TEXT = data.Field(batch_first=True, tokenize='spacy', lower=True)
         # self.LABEL = data.Field(sequential=False, unk_token=None)
         self.LABEL = data.LabelField()
 
@@ -67,7 +67,7 @@ class Quora():
                     ('q1', self.TEXT),
                     ('q2', self.TEXT),
                     ('id', self.RAW)])
-        vectors = Vectors(name='/home/fch/leo/text-similarity/BIMPM_new/.vector_cache/glove.840B.300d.txt')
+        vectors = Vectors(name='//media/fch/Data/leo/text-similarity/glove/glove.840B.300d.txt')
         self.TEXT.build_vocab(self.train, self.dev, self.test, vectors=vectors)
         self.LABEL.build_vocab(self.train)
 
