@@ -1,7 +1,6 @@
 import argparse
 
 import torch
-import numpy as np
 from torch import nn
 from torch.autograd import Variable
 
@@ -18,7 +17,7 @@ def test(model, args, data, mode='test'):
     criterion = nn.CrossEntropyLoss()
     model.eval()
     acc, loss, size = 0, 0, 0
-    losses = []
+
     for batch in iterator:
         if args.data_type == 'SNLI':
             s1, s2 = 'premise', 'hypothesis'
@@ -42,15 +41,14 @@ def test(model, args, data, mode='test'):
         pred = model(**kwargs)
 
         batch_loss = criterion(pred, batch.label)
-        losses.append(batch_loss.item())
+        loss += batch_loss.item()
 
         _, pred = pred.max(dim=1)
         acc += (pred == batch.label).sum().float()
         size += len(pred)
 
     acc /= size
-    # acc = acc.cpu().data[0]
-    return np.mean(losses), acc.item()
+    return loss, acc.item()
 
 
 def load_model(args, data):
@@ -58,7 +56,7 @@ def load_model(args, data):
     model.load_state_dict(torch.load(args.model_path))
 
     if args.gpu > -1:
-        model.to(args.device)
+        model.cuda(args.gpu)
 
     return model
 

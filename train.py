@@ -2,7 +2,7 @@ import argparse
 import copy
 import os
 import torch
-
+import numpy as np
 from torch import nn, optim
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
@@ -29,13 +29,14 @@ def train(args, data):
     writer = SummaryWriter(log_dir='runs/' + args.model_time)
 
     model.train()
-    loss, last_epoch = 0, -1
+    # loss, last_epoch = 0, -1
     max_dev_acc, max_test_acc = 0, 0
 
     iterator = data.train_iter
     for epoch in range(args.epochs):
         iterator.init_epoch()
         n_correct, n_total = 0, 0
+        all_losses = []
         print('epoch:', epoch+1)
         for i, batch in enumerate(iterator):
             # present_epoch = int(iterator.epoch)
@@ -76,7 +77,7 @@ def train(args, data):
 
             optimizer.zero_grad()
             batch_loss = criterion(pred, batch.label)
-            loss = batch_loss.item()
+            all_losses.append(batch_loss.item())
             batch_loss.backward()
             optimizer.step()
 
@@ -88,15 +89,17 @@ def train(args, data):
             if (i + 1) % args.print_freq == 0:
                 dev_loss, dev_acc = test(model, args, data, mode='dev')
                 test_loss, test_acc = test(model, args, data)
+                train_loss = np.mean(all_losses)
                 c = (i + 1) // args.print_freq
 
-                writer.add_scalar('loss/train', loss, c)
+                writer.add_scalar('loss/train', train_loss, c)
                 writer.add_scalar('loss/dev', dev_loss, c)
-                writer.add_scalar('acc/dev', dev_acc, c)
                 writer.add_scalar('loss/test', test_loss, c)
+                writer.add_scalar('acc/train', train_acc, c)
+                writer.add_scalar('acc/dev', dev_acc, c)
                 writer.add_scalar('acc/test', test_acc, c)
 
-                print(f'train loss: {loss:.3f} / dev loss: {dev_loss:.3f} / test loss: {test_loss:.3f}'
+                print(f'train loss: {train_loss:.3f} / dev loss: {dev_loss:.3f} / test loss: {test_loss:.3f}'
                       f' / train acc: {train_acc:.3f} / dev acc: {dev_acc:.3f} / test acc: {test_acc:.3f}')
 
                 if dev_acc > max_dev_acc:
@@ -109,7 +112,7 @@ def train(args, data):
     writer.close()
     print(f'max dev acc: {max_dev_acc:.3f} / max test acc: {max_test_acc:.3f}')
 
-    return best_model
+    return best_model, max_dev_acc
 
 
 def main():
@@ -149,11 +152,11 @@ def main():
     setattr(args, 'model_time', strftime('%H:%M:%S', localtime()))
 
     print('training start!')
-    best_model = train(args, data)
+    best_model, max_dev_acc = train(args, data)
 
     if not os.path.exists('saved_models'):
         os.makedirs('saved_models')
-    torch.save(best_model.state_dict(), f'saved_models/BIBPM_{args.data_type}_{args.model_time}.pt')
+    torch.save(best_model.state_dict(), f'saved_models/BIBPM_{args.data_type}_{max_dev_acc}.pt')
 
     print('training finished!')
 
