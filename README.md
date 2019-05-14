@@ -1,5 +1,5 @@
 # BIMPM-pytorch
-Re-implementation of [BIMPM](https://arxiv.org/abs/1702.03814)(Bilateral Multi-Perspective Matching for Natural Language Sentences, Zhiguo Wang et al., IJCAI 2017) on Pytorch
+Re-implementation of [BIMPM](https://arxiv.org/abs/1702.03814)(Bilateral Multi-Perspective Matching for Natural Language Sentences, Zhiguo Wang et al., IJCAI 2017) on Pytorch  based on [galsang/BIMPM-pytorch](https://github.com/galsang/BIMPM-pytorch)
 
 ## Results
 
@@ -20,8 +20,8 @@ Dataset: [Quora](https://drive.google.com/file/d/0B0PlTAo--BnaQWlsZl9FZ3l1c28/vi
 Note: I could not observe much gain from character embeddings. The implementation for the character embedding might be too naive to improve the performance.
 
 ## Development Environment
-- OS: Ubuntu 16.04 LTS (64bit)
-- Language: Python 3.6.2.
+- OS: Ubuntu 18.04 LTS (64bit)
+- Language: Python 3.6.5.
 - Pytorch: 0.4.0
 
 ## Requirements
