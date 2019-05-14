@@ -20,7 +20,7 @@ def train(args, data):
         model.to(args.device)
     if args.fix_emb:
         # print(args.fix_emb)
-        model.wembeddings.weight.required_grad = False
+        model.word_emb.weight.required_grad = False
 
     parameters = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = optim.Adam(parameters, lr=args.learning_rate)
