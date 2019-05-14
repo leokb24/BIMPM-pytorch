@@ -26,14 +26,14 @@ class BIMPM(nn.Module):
         # self.classes = class_size
         # self.char_use = args['--char']
 
-        self.wembeddings = nn.Embedding(num_embeddings=args.word_vocab_size,
+        self.word_emb = nn.Embedding(num_embeddings=args.word_vocab_size,
                                         embedding_dim=args.word_dim)
 
-        self.wembeddings.weight.data.copy_(data.TEXT.vocab.vectors)
+        self.word_emb.weight.data.copy_(data.TEXT.vocab.vectors)
         self.dropout = nn.Dropout(p=self.args.dropout)
 
         if self.args.use_char_emb:
-            self.char_embedding = nn.Embedding(args.char_vocab_size, args.char_dim, padding_idx=0)
+            self.char_emb = nn.Embedding(args.char_vocab_size, args.char_dim, padding_idx=0)
 
             self.char_lstm = nn.LSTM(input_size=self.args.char_dim,
                                      hidden_size=self.args.char_hidden_size,
@@ -70,15 +70,64 @@ class BIMPM(nn.Module):
         # self.ff2 = nn.Linear(self.args.hidden_size * 2, self.args.class_size)
 
         self.init_weights()
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        # ----- Word Representation Layer -----
+        # <unk> vectors is randomly initialized
+        nn.init.uniform_(self.word_emb.weight.data[0], -0.1, 0.1)
+
+        if self.args.use_char_emb:
+            nn.init.uniform_(self.char_emb.weight, -0.005, 0.005)
+            # zero vectors for padding
+            self.char_emb.weight.data[0].fill_(0)
+            nn.init.kaiming_normal_(self.char_lstm.weight_ih_l0)
+            nn.init.constant_(self.char_lstm.bias_ih_l0, val=0)
+            nn.init.orthogonal_(self.char_lstm.weight_hh_l0)
+            nn.init.constant_(self.char_lstm.bias_hh_l0, val=0)
+
+        # ----- Context Representation Layer -----
+        nn.init.kaiming_normal_(self.context_lstm.weight_ih_l0)
+        nn.init.constant_(self.context_lstm.bias_ih_l0, val=0)
+        nn.init.orthogonal_(self.context_lstm.weight_hh_l0)
+        nn.init.constant_(self.context_lstm.bias_hh_l0, val=0)
+
+        nn.init.kaiming_normal_(self.context_lstm.weight_ih_l0_reverse)
+        nn.init.constant_(self.context_lstm.bias_ih_l0_reverse, val=0)
+        nn.init.orthogonal_(self.context_lstm.weight_hh_l0_reverse)
+        nn.init.constant_(self.context_lstm.bias_hh_l0_reverse, val=0)
+
+        # ----- Matching Layer -----
+        for i in range(1, 9):
+            w = getattr(self, f'w{i}')
+            nn.init.kaiming_normal_(w)
+
+        # ----- Aggregation Layer -----
+        nn.init.kaiming_normal_(self.aggregation_lstm.weight_ih_l0)
+        nn.init.constant_(self.aggregation_lstm.bias_ih_l0, val=0)
+        nn.init.orthogonal_(self.aggregation_lstm.weight_hh_l0)
+        nn.init.constant_(self.aggregation_lstm.bias_hh_l0, val=0)
+
+        nn.init.kaiming_normal_(self.aggregation_lstm.weight_ih_l0_reverse)
+        nn.init.constant_(self.aggregation_lstm.bias_ih_l0_reverse, val=0)
+        nn.init.orthogonal_(self.aggregation_lstm.weight_hh_l0_reverse)
+        nn.init.constant_(self.aggregation_lstm.bias_hh_l0_reverse, val=0)
+
+        # # ----- Prediction Layer ----
+        # nn.init.uniform_(self.pred_la.weight, -0.005, 0.005)
+        # nn.init.constant_(self.pred_fc1.bias, val=0)
+        #
+        # nn.init.uniform_(self.pred_fc2.weight, -0.005, 0.005)
+        # nn.init.constant_(self.pred_fc2.bias, val=0)
 
     def init_weights(self):
         for param in list(self.parameters()):
             nn.init.uniform_(param, -0.01, 0.01)
 
     def init_char_embed(self, c1, c2):
-        c1_embed = self.char_embedding(c1)
+        c1_embed = self.char_emb(c1)
         char_p1 = self.char_lstm(c1_embed)
-        c2_embed = self.char_embedding(c2)
+        c2_embed = self.char_emb(c2)
         char_p2 = self.char_lstm(c2_embed)
 
         # (batch, char_hidden_size * num_directions)
@@ -180,8 +229,8 @@ class BIMPM(nn.Module):
 
     def forward(self, **kwargs):
 
-        p1_input = self.wembeddings(kwargs['p'])
-        p2_input = self.wembeddings(kwargs['h'])
+        p1_input = self.word_emb(kwargs['p'])
+        p2_input = self.word_emb(kwargs['h'])
 
         if self.args.use_char_emb:
             char_p1, char_p2 = self.init_char_embed(kwargs['char_p'], kwargs['char_h'])
@@ -249,7 +298,7 @@ class BIMPM(nn.Module):
 
         output = torch.cat([agg_p_last[:, -1], agg_h_last[:, -1]], dim=1)
         output = self.dropout(output)
-
+        print("hhh")
         # ----- Prediction Layer -----
         # output = torch.tanh(self.ff1(output))
         # output = self.dropout(output)
